@@ -1,12 +1,31 @@
 package urlshort
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"net/http"
 
-	"gopkg.in/yaml.v2"
+	"github.com/go-redis/redis/v8"
 )
+
+func RedisHandler(addr, pwd string, db int, fallback http.Handler) http.HandlerFunc {
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: pwd,
+		DB:       db,
+	})
+
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.TODO()
+		url, err := rdb.Get(ctx, r.RequestURI).Result()
+		if err != nil {
+			fallback.ServeHTTP(w, r)
+		} else {
+			http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+		}
+	}
+
+	return fn
+}
 
 // MapHandler will return an http.HandlerFunc (which also
 // implements http.Handler) that will attempt to map any
@@ -42,43 +61,44 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 //
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
-func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	yml = bytes.ReplaceAll(yml, []byte("\t"), []byte(" "))
-	parsedYaml, err := parseYAML([]byte(yml))
-	if err != nil {
-		return nil, err
-	}
 
-	pathMap := buildMap(parsedYaml)
-	return MapHandler(pathMap, fallback), nil
-}
+// func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
+// 	yml = bytes.ReplaceAll(yml, []byte("\t"), []byte(" "))
+// 	parsedYaml, err := parseYAML([]byte(yml))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func parseYAML(yml []byte) ([]map[string]string, error) {
-	var t []map[string]string
-	err := yaml.Unmarshal(yml, &t)
-	return t, err
-}
+// 	pathMap := buildMap(parsedYaml)
+// 	return MapHandler(pathMap, fallback), nil
+// }
 
-func JSONHandler(json []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	parsedJSON, err := parseJSON([]byte(json))
-	if err != nil {
-		return nil, err
-	}
+// func parseYAML(yml []byte) ([]map[string]string, error) {
+// 	var t []map[string]string
+// 	err := yaml.Unmarshal(yml, &t)
+// 	return t, err
+// }
 
-	pathMap := buildMap(parsedJSON)
-	return MapHandler(pathMap, fallback), nil
-}
+// func JSONHandler(json []byte, fallback http.Handler) (http.HandlerFunc, error) {
+// 	parsedJSON, err := parseJSON([]byte(json))
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func parseJSON(jsn []byte) ([]map[string]string, error) {
-	var t []map[string]string
-	err := json.Unmarshal(jsn, &t)
-	return t, err
-}
+// 	pathMap := buildMap(parsedJSON)
+// 	return MapHandler(pathMap, fallback), nil
+// }
 
-func buildMap(parsed []map[string]string) map[string]string {
-	pathMap := make(map[string]string)
-	for _, value := range parsed {
-		pathMap[value["path"]] = value["url"]
-	}
-	return pathMap
-}
+// func parseJSON(jsn []byte) ([]map[string]string, error) {
+// 	var t []map[string]string
+// 	err := json.Unmarshal(jsn, &t)
+// 	return t, err
+// }
+
+// func buildMap(parsed []map[string]string) map[string]string {
+// 	pathMap := make(map[string]string)
+// 	for _, value := range parsed {
+// 		pathMap[value["path"]] = value["url"]
+// 	}
+// 	return pathMap
+// }

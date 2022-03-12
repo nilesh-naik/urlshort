@@ -1,10 +1,7 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 
 	"urlshort"
@@ -14,11 +11,11 @@ func main() {
 	mux := defaultMux()
 
 	// Build the MapHandler using the mux as the fallback
-	pathsToUrls := map[string]string{
-		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
-		"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
-	}
-	mapHandler := urlshort.MapHandler(pathsToUrls, mux)
+	// pathsToUrls := map[string]string{
+	// 	"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
+	// 	"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
+	// }
+	// mapHandler := urlshort.MapHandler(pathsToUrls, mux)
 
 	// Build the YAMLHandler using the mapHandler as the
 	// fallback
@@ -42,19 +39,18 @@ func main() {
 	// 	panic(err)
 	// }
 
-	filePtr := flag.String("yaml", "paths.json", "Path to yaml file with path mapping")
+	// filePtr := flag.String("yaml", "paths.json", "Path to yaml file with path mapping")
 
-	flag.Parse()
+	// flag.Parse()
 
-	data, err := ioutil.ReadFile(*filePtr)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// data, err := ioutil.ReadFile(*filePtr)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	pathHandler, err := urlshort.JSONHandler(data, mapHandler)
-	if err != nil {
-		panic(err)
-	}
+	// pathHandler, err := urlshort.JSONHandler(data, mapHandler)
+
+	pathHandler := urlshort.RedisHandler("localhost:6379", "", 0, mux)
 	runServer(pathHandler)
 
 }
